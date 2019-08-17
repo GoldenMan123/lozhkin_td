@@ -1,0 +1,12 @@
+{
+  "name": "Ложкин TD",
+  "short_name": "Ложкин TD",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "lozhkin.png"
+    }
+  ]
+}
