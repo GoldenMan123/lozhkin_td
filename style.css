@@ -34,6 +34,10 @@ body {
     -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
 }
 
+.gameOver {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
 .textElement {
     text-align: center;
     text-shadow: -0.5px 0 black, 0 0.5px black, 0.5px 0 black, 0 -0.5px black;
@@ -102,6 +106,42 @@ body {
 
 .spoon3 {
     background: url('assets/spoon3.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.enemy1 {
+    background: url('assets/enemy1.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.enemy2 {
+    background: url('assets/enemy1.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.enemy3 {
+    background: url('assets/enemy3.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.enemy4 {
+    background: url('assets/enemy4.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.enemy5 {
+    background: url('assets/enemy5.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.enemy6 {
+    background: url('assets/enemy6.png');
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }

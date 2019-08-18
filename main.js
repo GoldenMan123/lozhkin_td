@@ -17,6 +17,15 @@ const PATH = [
 ];
 const DEFAULT_RADIUS = 1.5 * CELL_SIZE;
 
+const ENEMY_TYPES = [
+    "enemy1",
+    "enemy2",
+    "enemy3",
+    "enemy4",
+    "enemy5",
+    "enemy6"
+];
+
 const TOWER_SHOP = [
     {
         "type": "writer",
@@ -70,14 +79,18 @@ var game = null;
 var mouseX = 0;
 var mouseY = 0;
 var prevTimestamp = 0;
+var gameOver = false;
 
-var budget = 10000;
+var budget = 300;
 var toBuild = null;
 var towers = new Set();
 var enemies = new Set();
 var missiles = new Set();
 var messages = new Set();
 var replicTimeout = REPLIC_TIMEOUT;
+var wave = 1;
+var waveSpawned = 0;
+var waveSpawnTimeout = 5.0;
 
 
 /* Utils */
@@ -167,6 +180,10 @@ function mousedown(evt) {
     var cellX = coordToCell(mouseX);
     var cellY = coordToCell(mouseY);
 
+    if (gameOver) {
+        return;
+    }
+
     if (toBuild == null && cellX >= 12) {
         var shopIndex = cellY - 1;
         if (shopIndex >= 0 && shopIndex < TOWER_SHOP.length && TOWER_SHOP[shopIndex].price <= budget) {
@@ -190,6 +207,10 @@ function mouseup(evt) {
 }
 
 function mousemove(evt) {
+    if (gameOver) {
+        return;
+    }
+
     mouseX = clamp((evt.pageX - $(game).offset().left) / $(game).width(), 0, 1) * ASPECT_RATIO;
     mouseY = clamp((evt.pageY - $(game).offset().top) / $(game).height(), 0, 1);
 }
@@ -281,15 +302,16 @@ class Tower {
 };
 
 class Enemy {
-    constructor(speed) {
+    constructor(shield, speed, reward) {
+        this.type = randomElement(ENEMY_TYPES);
         this.X = PATH[0][0] * CELL_SIZE + CELL_SIZE_2;
         this.Y = PATH[0][1] * CELL_SIZE + CELL_SIZE_2;
         this.nextPathCell = 1;
         this.elapsedTime = 0;
         this.health = 1.0;
-        this.shield = 10;
-        this.speed = speed;
-        this.reward = 10;
+        this.shield = shield;
+        this.speed = speed * 0.1;
+        this.reward = reward;
         this.alive = true;
     }
 
@@ -297,7 +319,7 @@ class Enemy {
         if (!this.alive || this.nextPathCell >= PATH.length) {
             this.alive = false;
             enemies.delete(this);
-            enemies.add(new Enemy(0.1));
+            gameOver = true;
             return false;
         }
 
@@ -365,7 +387,6 @@ class Enemy {
             messages.add(new Message(this.X, this.Y, "+ " + reward +" ₽", "green"));
 
             enemies.delete(this);
-            enemies.add(new Enemy(0.1));
         }
     }
 };
@@ -439,7 +460,7 @@ function placeTower(cellX, cellY) {
 }
 
 function updateReplic(elapsedTime) {
-    if (towers.length == 0) {
+    if (towers.size == 0) {
         return;
     }
 
@@ -451,6 +472,22 @@ function updateReplic(elapsedTime) {
         var towerX = tower.cellX * CELL_SIZE + CELL_SIZE_2;
         var towerY = tower.cellY * CELL_SIZE + CELL_SIZE_2;
         messages.add(new Message(towerX, towerY, replic, "red"));
+    }
+}
+
+function updateWave(elapsedTime) {
+    waveSpawnTimeout -= elapsedTime;
+    if (waveSpawnTimeout < 0) {
+        waveSpawnTimeout = 0;
+        if (waveSpawned < 9 + wave) {
+            enemies.add(new Enemy(wave, 1.5 + (wave - 1) / 100, 9 + wave));
+            waveSpawned += 1;
+            waveSpawnTimeout = 1.0;
+        } else if (enemies.size == 0) {
+            wave += 1;
+            waveSpawned = 0;
+            waveSpawnTimeout = 5.0;
+        }
     }
 }
 
@@ -475,6 +512,7 @@ function updateState(elapsedTime) {
     }
 
     updateReplic(elapsedTime);
+    updateWave(elapsedTime);
 }
 
 function drawMenu(cellX, cellY) {
@@ -549,6 +587,20 @@ function drawMenu(cellX, cellY) {
                  3 * CELL_SIZE, 0.2 * CELL_SIZE,
                  "Цена: " + item.price + " ₽", color, 1.0);
     }
+
+    drawText(14 * CELL_SIZE,
+             8 * CELL_SIZE + CELL_SIZE_2,
+             4 * CELL_SIZE, 0.3 * CELL_SIZE,
+             "Волна " + wave, "white", 1.0);
+}
+
+function drawGameOver() {
+    drawElement(8 * CELL_SIZE, 4.5 * CELL_SIZE,
+                16 * CELL_SIZE, 9 * CELL_SIZE,
+                0, "gameOver");
+    drawText(8 * CELL_SIZE, 4.5 * CELL_SIZE,
+             16 * CELL_SIZE, 0.75 * CELL_SIZE,
+             "ОЦЕНКА АСИМПТОТИЧЕСКИ НЕТОЧНА!", "black", 1.0);
 }
 
 function drawScene() {
@@ -567,12 +619,12 @@ function drawScene() {
     for (let enemy of enemies) {
         drawElement(enemy.X, enemy.Y,
                     CELL_SIZE, CELL_SIZE, 0,
-                    "spoon2");
-        drawElement(enemy.X, enemy.Y - 0.3 * CELL_SIZE,
-                    CELL_SIZE, 0.1 * CELL_SIZE, 0,
+                    enemy.type);
+        drawElement(enemy.X, enemy.Y - 0.35 * CELL_SIZE,
+                    0.8 * CELL_SIZE, 0.1 * CELL_SIZE, 0,
                     "healthBack");
-        drawElement(enemy.X - (1 - enemy.health) * CELL_SIZE_2, enemy.Y - 0.3 * CELL_SIZE,
-                    enemy.health * CELL_SIZE, 0.1 * CELL_SIZE, 0,
+        drawElement(enemy.X - (1 - enemy.health) * 0.8 * CELL_SIZE_2, enemy.Y - 0.35 * CELL_SIZE,
+                    0.8 * enemy.health * CELL_SIZE, 0.1 * CELL_SIZE, 0,
                     "healthFront");
     }
 
@@ -590,12 +642,18 @@ function drawScene() {
                  1.0, 0.3 * CELL_SIZE,
                  message.text, message.color, opacity);
     }
+
+    if (gameOver) {
+        drawGameOver();
+    }
 }
 
 function mainLoop(timestamp) {
     var elapsedTime = Math.min(100, (timestamp - prevTimestamp)) / 1000;
     prevTimestamp = timestamp;
-    updateState(elapsedTime);
+    if (!gameOver) {
+        updateState(elapsedTime);
+    }
     drawScene();
     window.requestAnimationFrame(mainLoop);
 }
@@ -621,14 +679,6 @@ function main() {
     game.addEventListener("touchend", touchend);
     game.addEventListener("touchmove", touchmove);
 
-    enemies.add(new Enemy(0.1));
-    toBuild = 0;placeTower(0, 0);
-    toBuild = 0;placeTower(1, 0);
-    toBuild = 0;placeTower(2, 0);
-    toBuild = 0;placeTower(0, 2);
-    toBuild = 0;placeTower(1, 2);
-    toBuild = 2;placeTower(2, 2);
-    toBuild = 3;placeTower(1, 3);
     window.requestAnimationFrame(mainLoop);
 }
 
