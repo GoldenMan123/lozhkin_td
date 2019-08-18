@@ -36,7 +36,7 @@ function clamp(x, min_value, max_value) {
     return Math.min(Math.max(x, min_value), max_value);
 }
 
-function drawElement(x, y, width, height, type) {
+function drawElement(x, y, width, height, rotation, type) {
     var globalWidth = width * $(game).height();
     var globalHeight = height * $(game).height();
     var globalX = x / ASPECT_RATIO * $(game).width() + $(game).offset().left - globalWidth / 2;
@@ -48,7 +48,8 @@ function drawElement(x, y, width, height, type) {
         "width": globalWidth,
         "height": globalHeight,
         "left": globalX,
-        "top": globalY
+        "top": globalY,
+        "transform": "rotate(" + rotation + "deg)"
     });
 
     $(game).append(element);
@@ -120,7 +121,7 @@ class Tower {
         this.cellX = cellX;
         this.cellY = cellY;
         this.reload = 1.0;
-        this.reloadSpeed = 10.0;
+        this.reloadSpeed = 1.0;
     }
 
     update(elapsedTime) {
@@ -135,6 +136,18 @@ class Tower {
                 this.reload = 0;
             }
         }
+    }
+
+    getRotation() {
+        var rotation = 0;
+        if (this.reload < 0.25) {
+            rotation = 40 * this.reload;
+        } else if (this.reload < 0.75) {
+            rotation = 40 * (0.5 - this.reload);
+        } else {
+            rotation = 40 * (this.reload - 1.0);
+        }
+        return rotation;
     }
 };
 
@@ -249,34 +262,34 @@ function drawScene() {
     var cellX = coordToCell(mouseX);
     var cellY = coordToCell(mouseY);
 
-    for (let item of towers) {
-        drawElement(item.cellX * CELL_SIZE + CELL_SIZE_2,
-                    item.cellY * CELL_SIZE + CELL_SIZE_2,
-                    CELL_SIZE, CELL_SIZE,
+    for (let tower of towers) {
+        drawElement(tower.cellX * CELL_SIZE + CELL_SIZE_2,
+                    tower.cellY * CELL_SIZE + CELL_SIZE_2,
+                    CELL_SIZE, CELL_SIZE, tower.getRotation(),
                     "lozhkin");
     }
 
     for (let enemy of enemies) {
         drawElement(enemy.X, enemy.Y,
-                    CELL_SIZE, CELL_SIZE,
+                    CELL_SIZE, CELL_SIZE, 0,
                     "spoon2");
     }
 
     for (let missile of missiles) {
         drawElement(missile.X, missile.Y,
-                    CELL_SIZE_2, CELL_SIZE_2,
+                    CELL_SIZE_2, CELL_SIZE_2, 0,
                     "spoon1");
     }
 
     if (canPlaceTower(cellX, cellY)) {
         drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
                     cellY * CELL_SIZE + CELL_SIZE_2,
-                    CELL_SIZE, CELL_SIZE,
+                    CELL_SIZE, CELL_SIZE, 0,
                     "lozhkin");
     } else {
         drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
                     cellY * CELL_SIZE + CELL_SIZE_2,
-                    CELL_SIZE, CELL_SIZE,
+                    CELL_SIZE, CELL_SIZE, 0,
                     "red_cross");
     }
 }
