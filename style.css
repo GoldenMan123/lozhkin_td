@@ -34,8 +34,14 @@ body {
     -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
 }
 
-.spoon {
-    background: url('assets/spoon1.png');
+.lozhkin {
+    background: url('assets/lozhkin.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.red_cross {
+    background: url('assets/red_cross.png');
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }

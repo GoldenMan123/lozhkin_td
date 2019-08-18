@@ -4,6 +4,16 @@
 /* Constants */
 
 const ASPECT_RATIO = 16 / 9;
+const CELL_SIZE = 1 / 9;
+const CELL_SIZE_2 = CELL_SIZE / 2;
+const PATH = [
+    [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1],
+    [8, 1], [9, 1], [10, 1], [11, 1], [12, 1], [13, 1], [14, 1], [14, 2],
+    [14, 3], [14, 4], [13, 4], [12, 4], [11, 4], [10, 4], [9, 4], [8, 4],
+    [7, 4], [6, 4], [5, 4], [4, 4], [3, 4], [2, 4], [1, 4], [1, 5],
+    [1, 6], [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [8, 7],
+    [9, 7], [10, 7], [11, 7], [12, 7], [13, 7], [14, 7], [15, 7]
+];
 
 
 /* Globals */
@@ -13,11 +23,35 @@ var mouseX = 0;
 var mouseY = 0;
 var prevTimestamp = 0;
 
+var towers = new Set();
+
 
 /* Utils */
 
 function clamp(x, min_value, max_value) {
     return Math.min(Math.max(x, min_value), max_value);
+}
+
+function drawElement(x, y, width, height, type) {
+    var globalWidth = width * $(game).height();
+    var globalHeight = height * $(game).height();
+    var globalX = x / ASPECT_RATIO * $(game).width() + $(game).offset().left - globalWidth / 2;
+    var globalY = y * $(game).height() + $(game).offset().top - globalHeight / 2;
+
+    var element = $("<div/>", {
+        "class": "gameElement " + type
+    }).css({
+        "width": globalWidth,
+        "height": globalHeight,
+        "left": globalX,
+        "top": globalY
+    });
+
+    $(game).append(element);
+}
+
+function coordToCell(value) {
+    return Math.floor(value / CELL_SIZE);
 }
 
 
@@ -49,6 +83,9 @@ function resizeWindow() {
 /* Mouse and touch events */
 
 function mousedown(evt) {
+    var cellX = coordToCell(mouseX);
+    var cellY = coordToCell(mouseY);
+    placeTower(cellX, cellY);
 }
 
 function mouseup(evt) {
@@ -72,32 +109,62 @@ function touchmove(evt) {
 }
 
 
+/* Game Objects */
+
+class Tower {
+    constructor(cellX, cellY) {
+        this.cellX = cellX;
+        this.cellY = cellY;
+    }
+};
+
+
+/* Game Logic */
+
+function canPlaceTower(cellX, cellY) {
+    for (let coord of PATH) {
+        if (coord[0] == cellX && coord[1] == cellY) {
+            return false;
+        }
+    }
+    for (let tower of towers) {
+        if (tower.cellX == cellX && tower.cellY == cellY) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function placeTower(cellX, cellY) {
+    if (canPlaceTower(cellX, cellY)) {
+        towers.add(new Tower(cellX, cellY));
+    }
+}
+
+
 /* Main Loop */
 
 function updateState(elapsedTime) {
 }
 
-function drawElement(x, y, width, height, type) {
-    var globalWidth = width * $(game).height();
-    var globalHeight = height * $(game).height();
-    var globalX = x / ASPECT_RATIO * $(game).width() + $(game).offset().left - globalWidth / 2;
-    var globalY = y * $(game).height() + $(game).offset().top - globalHeight / 2;
-
-    var element = $("<div/>", {
-        "class": "gameElement " + type
-    }).css({
-        "width": globalWidth,
-        "height": globalHeight,
-        "left": globalX,
-        "top": globalY
-    });
-
-    $(game).append(element);
-}
-
 function drawScene() {
     $(game).empty();
-    drawElement(mouseX, mouseY, 0.05, 0.05, "spoon");
+
+    var cellX = coordToCell(mouseX);
+    var cellY = coordToCell(mouseY);
+
+    for (let item of towers) {
+        drawElement(item.cellX * CELL_SIZE + CELL_SIZE_2,
+                    item.cellY * CELL_SIZE + CELL_SIZE_2,
+                    CELL_SIZE, CELL_SIZE,
+                    "lozhkin");
+    }
+
+    if (canPlaceTower(cellX, cellY)) {
+        drawElement(cellX * CELL_SIZE + CELL_SIZE_2, cellY * CELL_SIZE + CELL_SIZE_2, CELL_SIZE, CELL_SIZE, "lozhkin");
+    } else {
+        drawElement(cellX * CELL_SIZE + CELL_SIZE_2, cellY * CELL_SIZE + CELL_SIZE_2, CELL_SIZE, CELL_SIZE, "red_cross");
+    }
 }
 
 function mainLoop(timestamp) {
