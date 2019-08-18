@@ -44,6 +44,25 @@ const TOWER_SHOP = [
     }
 ];
 
+const REPLIC_TIMEOUT = 10;
+const REPLICS = [
+    "Так сказать..",
+    "Сумма тупиковых",
+    "Квазиизоморфизм",
+    "Пучок граней",
+    "Универсальный многополюсник",
+    "Квазиполное дерево",
+    "АОВСТ",
+    "Стандартное ДУМ",
+    "Теорема Журавлёва",
+    "ФАЛ голосования",
+    "Лемма о протыкающих наборах",
+    "Оценки типичных значений",
+    "Разделительные КС",
+    "КПСТ отсутствует!",
+    "Асимптотически наилучший"
+];
+
 
 /* Globals */
 
@@ -57,6 +76,8 @@ var toBuild = null;
 var towers = new Set();
 var enemies = new Set();
 var missiles = new Set();
+var messages = new Set();
+var replicTimeout = REPLIC_TIMEOUT;
 
 
 /* Utils */
@@ -84,7 +105,7 @@ function drawElement(x, y, width, height, rotation, type) {
     $(game).append(element);
 }
 
-function drawText(x, y, width, height, text, color) {
+function drawText(x, y, width, height, text, color, opacity) {
     var globalWidth = width * $(game).height();
     var globalHeight = height * $(game).height();
     var globalX = x / ASPECT_RATIO * $(game).width() + $(game).offset().left - globalWidth / 2;
@@ -98,7 +119,8 @@ function drawText(x, y, width, height, text, color) {
         "left": globalX,
         "top": globalY,
         "font-size": globalHeight,
-        "color": color
+        "color": color,
+        "opacity": opacity
     }).text(text);
 
     $(game).append(element);
@@ -106,6 +128,11 @@ function drawText(x, y, width, height, text, color) {
 
 function coordToCell(value) {
     return Math.floor(value / CELL_SIZE);
+}
+
+function randomElement(array) {
+    array = Array.from(array);
+    return array[Math.floor(Math.random() * array.length)];
 }
 
 
@@ -335,6 +362,7 @@ class Enemy {
                 }
             }
             budget += reward;
+            messages.add(new Message(this.X, this.Y, "+ " + reward +" ₽", "green"));
 
             enemies.delete(this);
             enemies.add(new Enemy(0.1));
@@ -361,6 +389,23 @@ class Missile {
         } else {
             this.enemy.damage(this.strength);
             missiles.delete(this);
+        }
+    }
+};
+
+class Message {
+    constructor(x, y, text, color) {
+        this.X = x;
+        this.Y = y;
+        this.text = text;
+        this.color = color;
+        this.ttl = 0.0;
+    }
+
+    update(elapsedTime) {
+        this.ttl += elapsedTime;
+        if (this.ttl > 1.0) {
+            messages.delete(this);
         }
     }
 };
@@ -393,6 +438,22 @@ function placeTower(cellX, cellY) {
     }
 }
 
+function updateReplic(elapsedTime) {
+    if (towers.length == 0) {
+        return;
+    }
+
+    replicTimeout -= elapsedTime;
+    if (replicTimeout < 0) {
+        replicTimeout = REPLIC_TIMEOUT;
+        var tower = randomElement(towers);
+        var replic = randomElement(REPLICS);
+        var towerX = tower.cellX * CELL_SIZE + CELL_SIZE_2;
+        var towerY = tower.cellY * CELL_SIZE + CELL_SIZE_2;
+        messages.add(new Message(towerX, towerY, replic, "red"));
+    }
+}
+
 
 /* Main Loop */
 
@@ -408,6 +469,12 @@ function updateState(elapsedTime) {
     for (let enemy of enemies) {
         enemy.move(elapsedTime);
     }
+
+    for (let message of messages) {
+        message.update(elapsedTime);
+    }
+
+    updateReplic(elapsedTime);
 }
 
 function drawMenu(cellX, cellY) {
@@ -449,17 +516,17 @@ function drawMenu(cellX, cellY) {
     if (toBuild == null) {
         drawText(13 * CELL_SIZE, CELL_SIZE_2 - 0.15 * CELL_SIZE,
                  2 * CELL_SIZE, 0.3 * CELL_SIZE,
-                 "Бюджет", "white");
+                 "Бюджет", "white", 1.0);
         drawText(13 * CELL_SIZE, CELL_SIZE_2 + 0.15 * CELL_SIZE,
                  2 * CELL_SIZE, 0.2 * CELL_SIZE,
-                 "Это то, что тратить", "white");
+                 "Это то, что тратить", "white", 1.0);
         drawText(15 * CELL_SIZE, CELL_SIZE_2,
                  2 * CELL_SIZE, 0.3 * CELL_SIZE,
-                 budget + " ₽", "white");
+                 budget + " ₽", "white", 1.0);
     } else {
         drawText(14 * CELL_SIZE, CELL_SIZE_2,
                  2 * CELL_SIZE, 0.3 * CELL_SIZE,
-                 "Отменить", "white");
+                 "Отменить", "white", 1.0);
     }
 
     for (var i = 0; i < TOWER_SHOP.length; ++i) {
@@ -472,15 +539,15 @@ function drawMenu(cellX, cellY) {
         drawText(14 * CELL_SIZE + CELL_SIZE_2,
                  (1 + i) * CELL_SIZE + CELL_SIZE_2 - 0.3 * CELL_SIZE,
                  3 * CELL_SIZE, 0.25 * CELL_SIZE,
-                 item.title, color);
+                 item.title, color, 1.0);
         drawText(14 * CELL_SIZE + CELL_SIZE_2,
                  (1 + i) * CELL_SIZE + CELL_SIZE_2,
                  3 * CELL_SIZE, 0.2 * CELL_SIZE,
-                 item.description, color);
+                 item.description, color, 1.0);
         drawText(14 * CELL_SIZE + CELL_SIZE_2,
                  (1 + i) * CELL_SIZE + CELL_SIZE_2 + 0.3 * CELL_SIZE,
                  3 * CELL_SIZE, 0.2 * CELL_SIZE,
-                 "Цена: " + item.price + " ₽", color);
+                 "Цена: " + item.price + " ₽", color, 1.0);
     }
 }
 
@@ -516,6 +583,13 @@ function drawScene() {
     }
 
     drawMenu(cellX, cellY);
+
+    for (let message of messages) {
+        var opacity = message.ttl < 0.5 ? 1.0 : 2 * (1.0 - message.ttl);
+        drawText(message.X, message.Y - message.ttl * 0.05,
+                 1.0, 0.3 * CELL_SIZE,
+                 message.text, message.color, opacity);
+    }
 }
 
 function mainLoop(timestamp) {
@@ -548,6 +622,13 @@ function main() {
     game.addEventListener("touchmove", touchmove);
 
     enemies.add(new Enemy(0.1));
+    toBuild = 0;placeTower(0, 0);
+    toBuild = 0;placeTower(1, 0);
+    toBuild = 0;placeTower(2, 0);
+    toBuild = 0;placeTower(0, 2);
+    toBuild = 0;placeTower(1, 2);
+    toBuild = 2;placeTower(2, 2);
+    toBuild = 3;placeTower(1, 3);
     window.requestAnimationFrame(mainLoop);
 }
 
