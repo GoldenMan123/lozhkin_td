@@ -45,3 +45,21 @@ body {
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }
+
+.spoon1 {
+    background: url('assets/spoon1.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.spoon2 {
+    background: url('assets/spoon2.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.spoon3 {
+    background: url('assets/spoon3.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}

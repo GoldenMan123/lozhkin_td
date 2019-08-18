@@ -7,12 +7,14 @@ const ASPECT_RATIO = 16 / 9;
 const CELL_SIZE = 1 / 9;
 const CELL_SIZE_2 = CELL_SIZE / 2;
 const PATH = [
+    [-1, 1],
     [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1],
     [8, 1], [9, 1], [10, 1], [11, 1], [12, 1], [13, 1], [14, 1], [14, 2],
     [14, 3], [14, 4], [13, 4], [12, 4], [11, 4], [10, 4], [9, 4], [8, 4],
     [7, 4], [6, 4], [5, 4], [4, 4], [3, 4], [2, 4], [1, 4], [1, 5],
     [1, 6], [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [8, 7],
-    [9, 7], [10, 7], [11, 7], [12, 7], [13, 7], [14, 7], [15, 7]
+    [9, 7], [10, 7], [11, 7], [12, 7], [13, 7], [14, 7], [15, 7],
+    [16, 7]
 ];
 
 
@@ -24,6 +26,7 @@ var mouseY = 0;
 var prevTimestamp = 0;
 
 var towers = new Set();
+var enemies = new Set();
 
 
 /* Utils */
@@ -118,6 +121,48 @@ class Tower {
     }
 };
 
+class Enemy {
+    constructor(speed) {
+        this.X = PATH[0][0] * CELL_SIZE + CELL_SIZE_2;
+        this.Y = PATH[0][1] * CELL_SIZE + CELL_SIZE_2;
+        this.nextPathCell = 1;
+        this.elapsedTime = 0;
+        this.speed = speed;
+    }
+
+    movePart() {
+        if (this.nextPathCell >= PATH.length) {
+            enemies.delete(this);
+            enemies.add(new Enemy(0.1));
+            return false;
+        }
+
+        var destX = PATH[this.nextPathCell][0] * CELL_SIZE + CELL_SIZE_2;
+        var destY = PATH[this.nextPathCell][1] * CELL_SIZE + CELL_SIZE_2;
+        var distance = Math.sqrt((destX - this.X) ** 2 + (destY - this.Y) ** 2);
+
+        if (distance > this.elapsedTime * this.speed) {
+            var speedX = (destX - this.X) / distance * this.speed;
+            var speedY = (destY - this.Y) / distance * this.speed;
+            this.X += speedX * this.elapsedTime;
+            this.Y += speedY * this.elapsedTime;
+            this.elapsedTime = 0;
+            return false;
+        } else {
+            this.X = destX;
+            this.Y = destY;
+            this.nextPathCell += 1;
+            this.elapsedTime -= distance;
+            return true;
+        }
+    }
+
+    move(elapsedTime) {
+        this.elapsedTime = elapsedTime;
+        while (this.movePart()) {}
+    }
+};
+
 
 /* Game Logic */
 
@@ -145,6 +190,9 @@ function placeTower(cellX, cellY) {
 /* Main Loop */
 
 function updateState(elapsedTime) {
+    for (let enemy of enemies) {
+        enemy.move(elapsedTime);
+    }
 }
 
 function drawScene() {
@@ -160,15 +208,27 @@ function drawScene() {
                     "lozhkin");
     }
 
+    for (let enemy of enemies) {
+        drawElement(enemy.X, enemy.Y,
+                    CELL_SIZE, CELL_SIZE,
+                    "spoon2");
+    }
+
     if (canPlaceTower(cellX, cellY)) {
-        drawElement(cellX * CELL_SIZE + CELL_SIZE_2, cellY * CELL_SIZE + CELL_SIZE_2, CELL_SIZE, CELL_SIZE, "lozhkin");
+        drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
+                    cellY * CELL_SIZE + CELL_SIZE_2,
+                    CELL_SIZE, CELL_SIZE,
+                    "lozhkin");
     } else {
-        drawElement(cellX * CELL_SIZE + CELL_SIZE_2, cellY * CELL_SIZE + CELL_SIZE_2, CELL_SIZE, CELL_SIZE, "red_cross");
+        drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
+                    cellY * CELL_SIZE + CELL_SIZE_2,
+                    CELL_SIZE, CELL_SIZE,
+                    "red_cross");
     }
 }
 
 function mainLoop(timestamp) {
-    var elapsedTime = timestamp - prevTimestamp;
+    var elapsedTime = Math.min(100, (timestamp - prevTimestamp)) / 1000;
     prevTimestamp = timestamp;
     updateState(elapsedTime);
     drawScene();
@@ -196,6 +256,7 @@ function main() {
     game.addEventListener("touchend", touchend);
     game.addEventListener("touchmove", touchmove);
 
+    enemies.add(new Enemy(0.1));
     window.requestAnimationFrame(mainLoop);
 }
 
