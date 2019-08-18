@@ -53,6 +53,7 @@ var mouseY = 0;
 var prevTimestamp = 0;
 
 var budget = 300;
+var toBuild = null;
 var towers = new Set();
 var enemies = new Set();
 var missiles = new Set();
@@ -138,7 +139,24 @@ function resizeWindow() {
 function mousedown(evt) {
     var cellX = coordToCell(mouseX);
     var cellY = coordToCell(mouseY);
-    placeTower(cellX, cellY);
+
+    if (toBuild == null && cellX >= 12) {
+        var shopIndex = cellY - 1;
+        if (shopIndex >= 0 && shopIndex < TOWER_SHOP.length && TOWER_SHOP[shopIndex].price <= budget) {
+            toBuild = shopIndex;
+        }
+        return;
+    }
+
+    if (toBuild != null && cellX < 12) {
+        placeTower(cellX, cellY);
+        return;
+    }
+
+    if (toBuild != null && cellX >= 12 && cellY == 0) {
+        toBuild = null;
+        return;
+    }
 }
 
 function mouseup(evt) {
@@ -165,9 +183,10 @@ function touchmove(evt) {
 /* Game Objects */
 
 class Tower {
-    constructor(cellX, cellY) {
+    constructor(cellX, cellY, type) {
         this.cellX = cellX;
         this.cellY = cellY;
+        this.type = type;
         this.reload = 1.0;
         this.reloadSpeed = 1.0;
         this.radius = DEFAULT_RADIUS;
@@ -181,7 +200,6 @@ class Tower {
             var towerY = this.cellY * CELL_SIZE + CELL_SIZE_2;
             for (let enemy of enemies) {
                 var dist = Math.sqrt((enemy.X - towerX) ** 2 + (enemy.Y - towerY) ** 2);
-console.log(dist);
                 if (dist > this.radius) {
                     continue;
                 }
@@ -292,7 +310,9 @@ function canPlaceTower(cellX, cellY) {
 
 function placeTower(cellX, cellY) {
     if (canPlaceTower(cellX, cellY)) {
-        towers.add(new Tower(cellX, cellY));
+        towers.add(new Tower(cellX, cellY, TOWER_SHOP[toBuild].type));
+        budget -= TOWER_SHOP[toBuild].price;
+        toBuild = null;
     }
 }
 
@@ -313,16 +333,57 @@ function updateState(elapsedTime) {
     }
 }
 
-function drawMenu() {
-    drawText(13 * CELL_SIZE, CELL_SIZE_2 - 0.15 * CELL_SIZE,
-             2 * CELL_SIZE, 0.3 * CELL_SIZE,
-             "Бюджет", "white");
-    drawText(13 * CELL_SIZE, CELL_SIZE_2 + 0.15 * CELL_SIZE,
-             2 * CELL_SIZE, 0.2 * CELL_SIZE,
-             "Это то, что тратить", "white");
-     drawText(15 * CELL_SIZE, CELL_SIZE_2,
-              2 * CELL_SIZE, 0.3 * CELL_SIZE,
-              budget + " ₽", "white");
+function drawMenu(cellX, cellY) {
+    if (toBuild != null && cellX < 12) {
+        if (canPlaceTower(cellX, cellY)) {
+            drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
+                        cellY * CELL_SIZE + CELL_SIZE_2,
+                        2 * DEFAULT_RADIUS, 2 * DEFAULT_RADIUS, 0,
+                        "circle");
+            drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
+                        cellY * CELL_SIZE + CELL_SIZE_2,
+                        CELL_SIZE, CELL_SIZE, 0,
+                        "lozhkin");
+        } else {
+            drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
+                        cellY * CELL_SIZE + CELL_SIZE_2,
+                        CELL_SIZE, CELL_SIZE, 0,
+                        "red_cross");
+        }
+    }
+
+    if (toBuild == null && cellX >= 12) {
+        var shopIndex = cellY - 1;
+        if (shopIndex >= 0 && shopIndex < TOWER_SHOP.length && TOWER_SHOP[shopIndex].price <= budget) {
+            drawElement(14 * CELL_SIZE,
+                        cellY * CELL_SIZE + CELL_SIZE_2,
+                        4 * CELL_SIZE, CELL_SIZE, 0,
+                        "menuSelector");
+        }
+    }
+
+    if (toBuild != null && cellX >= 12 && cellY == 0) {
+        drawElement(14 * CELL_SIZE,
+                    cellY * CELL_SIZE + CELL_SIZE_2,
+                    4 * CELL_SIZE, CELL_SIZE, 0,
+                    "menuSelector");
+    }
+
+    if (toBuild == null) {
+        drawText(13 * CELL_SIZE, CELL_SIZE_2 - 0.15 * CELL_SIZE,
+                 2 * CELL_SIZE, 0.3 * CELL_SIZE,
+                 "Бюджет", "white");
+        drawText(13 * CELL_SIZE, CELL_SIZE_2 + 0.15 * CELL_SIZE,
+                 2 * CELL_SIZE, 0.2 * CELL_SIZE,
+                 "Это то, что тратить", "white");
+        drawText(15 * CELL_SIZE, CELL_SIZE_2,
+                 2 * CELL_SIZE, 0.3 * CELL_SIZE,
+                 budget + " ₽", "white");
+    } else {
+        drawText(14 * CELL_SIZE, CELL_SIZE_2,
+                 2 * CELL_SIZE, 0.3 * CELL_SIZE,
+                 "Отменить", "white");
+    }
 
     for (var i = 0; i < TOWER_SHOP.length; ++i) {
         var item = TOWER_SHOP[i];
@@ -371,23 +432,7 @@ function drawScene() {
                     "spoon1");
     }
 
-    if (canPlaceTower(cellX, cellY)) {
-        drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
-                    cellY * CELL_SIZE + CELL_SIZE_2,
-                    2 * DEFAULT_RADIUS, 2 * DEFAULT_RADIUS, 0,
-                    "circle");
-        drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
-                    cellY * CELL_SIZE + CELL_SIZE_2,
-                    CELL_SIZE, CELL_SIZE, 0,
-                    "lozhkin");
-    } else if (cellX < 12) {
-        drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
-                    cellY * CELL_SIZE + CELL_SIZE_2,
-                    CELL_SIZE, CELL_SIZE, 0,
-                    "red_cross");
-    }
-
-    drawMenu();
+    drawMenu(cellX, cellY);
 }
 
 function mainLoop(timestamp) {

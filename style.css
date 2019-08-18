@@ -45,6 +45,13 @@ body {
     -moz-border-radius: 50%;
 }
 
+.menuSelector {
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 10%;
+    -webkit-border-radius: 10%;
+    -moz-border-radius: 10%;
+}
+
 .lozhkin {
     background: url('assets/lozhkin.png');
     background-size: 100% 100%;
