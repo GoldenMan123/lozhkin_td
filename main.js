@@ -1,9 +1,24 @@
 "use strict";
 
 
+/* Constants */
+
+const ASPECT_RATIO = 16 / 9;
+
+
 /* Globals */
 
 var game = null;
+var mouseX = 0;
+var mouseY = 0;
+var prevTimestamp = 0;
+
+
+/* Utils */
+
+function clamp(x, min_value, max_value) {
+    return Math.min(Math.max(x, min_value), max_value);
+}
 
 
 /* Window resize events */
@@ -15,19 +30,18 @@ window.mobilecheck = function() {
 };
 
 function resizeWindow() {
-    var aspectRatio = 16 / 9;
     var newWidth = window.innerWidth;
     var newHeight = window.innerHeight;
     var newAspectRatio = newWidth / newHeight;
 
-    if (newAspectRatio > aspectRatio) {
-        newWidth = newHeight * aspectRatio;
-        game.style.height = newHeight + "px";
-        game.style.width = newWidth + "px";
+    if (newAspectRatio > ASPECT_RATIO) {
+        newWidth = newHeight * ASPECT_RATIO;
+        $(game).height(newHeight);
+        $(game).width(newWidth);
     } else {
-        newHeight = newWidth / aspectRatio;
-        game.style.width = newWidth + "px";
-        game.style.height = newHeight + "px";
+        newHeight = newWidth / ASPECT_RATIO;
+        $(game).height(newHeight);
+        $(game).width(newWidth);
     }
 }
 
@@ -40,6 +54,11 @@ function mousedown(evt) {
 function mouseup(evt) {
 }
 
+function mousemove(evt) {
+    mouseX = clamp((evt.pageX - $(game).offset().left) / $(game).width(), 0, 1) * ASPECT_RATIO;
+    mouseY = clamp((evt.pageY - $(game).offset().top) / $(game).height(), 0, 1);
+}
+
 function touchstart(evt) {
     evt.preventDefault();
 }
@@ -50,6 +69,43 @@ function touchend(evt) {
 
 function touchmove(evt) {
     evt.preventDefault();
+}
+
+
+/* Main Loop */
+
+function updateState(elapsedTime) {
+}
+
+function drawElement(x, y, width, height, type) {
+    var globalWidth = width * $(game).height();
+    var globalHeight = height * $(game).height();
+    var globalX = x / ASPECT_RATIO * $(game).width() + $(game).offset().left - globalWidth / 2;
+    var globalY = y * $(game).height() + $(game).offset().top - globalHeight / 2;
+
+    var element = $("<div/>", {
+        "class": "gameElement " + type
+    }).css({
+        "width": globalWidth,
+        "height": globalHeight,
+        "left": globalX,
+        "top": globalY
+    });
+
+    $(game).append(element);
+}
+
+function drawScene() {
+    $(game).empty();
+    drawElement(mouseX, mouseY, 0.05, 0.05, "spoon");
+}
+
+function mainLoop(timestamp) {
+    var elapsedTime = timestamp - prevTimestamp;
+    prevTimestamp = timestamp;
+    updateState(elapsedTime);
+    drawScene();
+    window.requestAnimationFrame(mainLoop);
 }
 
 
@@ -68,9 +124,12 @@ function main() {
 
     game.addEventListener("mousedown", mousedown);
     game.addEventListener("mouseup", mouseup);
+    game.addEventListener("mousemove", mousemove);
     game.addEventListener("touchstart", touchstart);
     game.addEventListener("touchend", touchend);
     game.addEventListener("touchmove", touchmove);
+
+    window.requestAnimationFrame(mainLoop);
 }
 
 $(main);
