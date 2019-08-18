@@ -52,7 +52,7 @@ var mouseX = 0;
 var mouseY = 0;
 var prevTimestamp = 0;
 
-var budget = 300;
+var budget = 10000;
 var toBuild = null;
 var towers = new Set();
 var enemies = new Set();
@@ -187,37 +187,67 @@ class Tower {
         this.cellX = cellX;
         this.cellY = cellY;
         this.type = type;
-        this.reload = 1.0;
-        this.reloadSpeed = 1.0;
         this.radius = DEFAULT_RADIUS;
+        if (this.type == "writer") {
+            this.reload = 0.0;
+            this.reloadSpeed = 1.0;
+            this.strength = 1.0;
+        } else if (this.type == "science") {
+            this.strength = 2.0;
+        } else if (this.type == "finance") {
+            this.strength = 2.0;
+        } else if (this.type == "svetilo") {
+            this.strength = 2.0;
+        }
     }
 
     update(elapsedTime) {
-        this.reload -= elapsedTime * this.reloadSpeed;
-        if (this.reload <= 0) {
-            this.reload = 0;
+        if (this.type == "writer") {
             var towerX = this.cellX * CELL_SIZE + CELL_SIZE_2;
             var towerY = this.cellY * CELL_SIZE + CELL_SIZE_2;
-            for (let enemy of enemies) {
-                var dist = Math.sqrt((enemy.X - towerX) ** 2 + (enemy.Y - towerY) ** 2);
-                if (dist > this.radius) {
+
+            var reloadSpeed = this.reloadSpeed;
+            for (let tower of towers) {
+                if (tower.type != "svetilo") {
                     continue;
                 }
-                missiles.add(new Missile(towerX, towerY, 1.0, enemy));
-                this.reload = 1.0;
-                break;
+                var anotherTowerX = tower.cellX * CELL_SIZE + CELL_SIZE_2;
+                var anotherTowerY = tower.cellY * CELL_SIZE + CELL_SIZE_2;
+                var distance = Math.sqrt((towerX - anotherTowerX) ** 2 + (towerY - anotherTowerY) ** 2);
+                if (distance < tower.radius) {
+                    reloadSpeed = Math.max(reloadSpeed, this.reloadSpeed * tower.strength);
+                }
+            }
+
+            this.reload -= elapsedTime * reloadSpeed;
+            if (this.reload <= 0) {
+                this.reload = 0;
+                for (let enemy of enemies) {
+                    if (!enemy.alive) {
+                        continue;
+                    }
+                    var dist = Math.sqrt((enemy.X - towerX) ** 2 + (enemy.Y - towerY) ** 2);
+                    if (dist > this.radius) {
+                        continue;
+                    }
+                    missiles.add(new Missile(towerX, towerY, 1.0, this.strength, enemy));
+                    this.reload = 1.0;
+                    break;
+                }
             }
         }
     }
 
     getRotation() {
         var rotation = 0;
-        if (this.reload < 0.25) {
-            rotation = 40 * this.reload;
-        } else if (this.reload < 0.75) {
-            rotation = 40 * (0.5 - this.reload);
-        } else {
-            rotation = 40 * (this.reload - 1.0);
+        if (this.type == "writer") {
+            if (this.reload < 0.25) {
+                rotation = 40 * this.reload;
+            } else if (this.reload < 0.75) {
+                rotation = 40 * (0.5 - this.reload);
+            } else {
+                rotation = 40 * (this.reload - 1.0);
+            }
         }
         return rotation;
     }
@@ -229,7 +259,10 @@ class Enemy {
         this.Y = PATH[0][1] * CELL_SIZE + CELL_SIZE_2;
         this.nextPathCell = 1;
         this.elapsedTime = 0;
+        this.health = 1.0;
+        this.shield = 10;
         this.speed = speed;
+        this.reward = 10;
         this.alive = true;
     }
 
@@ -241,13 +274,26 @@ class Enemy {
             return false;
         }
 
+        var speed = this.speed;
+        for (let tower of towers) {
+            if (tower.type != "science") {
+                continue;
+            }
+            var towerX = tower.cellX * CELL_SIZE + CELL_SIZE_2;
+            var towerY = tower.cellY * CELL_SIZE + CELL_SIZE_2;
+            var distance = Math.sqrt((towerX - this.X) ** 2 + (towerY - this.Y) ** 2);
+            if (distance < tower.radius) {
+                speed = Math.min(speed, this.speed / tower.strength);
+            }
+        }
+
         var destX = PATH[this.nextPathCell][0] * CELL_SIZE + CELL_SIZE_2;
         var destY = PATH[this.nextPathCell][1] * CELL_SIZE + CELL_SIZE_2;
         var distance = Math.sqrt((destX - this.X) ** 2 + (destY - this.Y) ** 2);
 
-        if (distance > this.elapsedTime * this.speed) {
-            var speedX = (destX - this.X) / distance * this.speed;
-            var speedY = (destY - this.Y) / distance * this.speed;
+        if (distance > this.elapsedTime * speed) {
+            var speedX = (destX - this.X) / distance * speed;
+            var speedY = (destY - this.Y) / distance * speed;
             this.X += speedX * this.elapsedTime;
             this.Y += speedY * this.elapsedTime;
             this.elapsedTime = 0;
@@ -256,7 +302,7 @@ class Enemy {
             this.X = destX;
             this.Y = destY;
             this.nextPathCell += 1;
-            this.elapsedTime -= distance;
+            this.elapsedTime -= distance / speed;
             return true;
         }
     }
@@ -265,14 +311,44 @@ class Enemy {
         this.elapsedTime = elapsedTime;
         while (this.movePart()) {}
     }
+
+    damage(strength) {
+        if (!this.alive) {
+            return;
+        }
+
+        this.health -= strength / this.shield;
+        if (this.health < 1e-6) {
+            this.health = 0;
+            this.alive = false;
+
+            var reward = this.reward;
+            for (let tower of towers) {
+                if (tower.type != "finance") {
+                    continue;
+                }
+                var towerX = tower.cellX * CELL_SIZE + CELL_SIZE_2;
+                var towerY = tower.cellY * CELL_SIZE + CELL_SIZE_2;
+                var distance = Math.sqrt((towerX - this.X) ** 2 + (towerY - this.Y) ** 2);
+                if (distance < tower.radius) {
+                    reward = Math.max(reward, this.reward * tower.strength);
+                }
+            }
+            budget += reward;
+
+            enemies.delete(this);
+            enemies.add(new Enemy(0.1));
+        }
+    }
 };
 
 class Missile {
-    constructor(x, y, speed, enemy) {
+    constructor(x, y, speed, strength, enemy) {
         this.X = x;
         this.Y = y;
         this.enemy = enemy;
         this.speed = speed;
+        this.strength = strength;
     }
 
     move(elapsedTime) {
@@ -283,6 +359,7 @@ class Missile {
             this.X += speedX * elapsedTime;
             this.Y += speedY * elapsedTime;
         } else {
+            this.enemy.damage(this.strength);
             missiles.delete(this);
         }
     }
@@ -424,6 +501,12 @@ function drawScene() {
         drawElement(enemy.X, enemy.Y,
                     CELL_SIZE, CELL_SIZE, 0,
                     "spoon2");
+        drawElement(enemy.X, enemy.Y - 0.3 * CELL_SIZE,
+                    CELL_SIZE, 0.1 * CELL_SIZE, 0,
+                    "healthBack");
+        drawElement(enemy.X - (1 - enemy.health) * CELL_SIZE_2, enemy.Y - 0.3 * CELL_SIZE,
+                    enemy.health * CELL_SIZE, 0.1 * CELL_SIZE, 0,
+                    "healthFront");
     }
 
     for (let missile of missiles) {
