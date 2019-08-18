@@ -27,6 +27,7 @@ var prevTimestamp = 0;
 
 var towers = new Set();
 var enemies = new Set();
+var missiles = new Set();
 
 
 /* Utils */
@@ -118,6 +119,22 @@ class Tower {
     constructor(cellX, cellY) {
         this.cellX = cellX;
         this.cellY = cellY;
+        this.reload = 1.0;
+        this.reloadSpeed = 10.0;
+    }
+
+    update(elapsedTime) {
+        this.reload -= elapsedTime * this.reloadSpeed;
+        if (this.reload <= 0) {
+            if (enemies.size > 0) {
+                missiles.add(new Missile(this.cellX * CELL_SIZE + CELL_SIZE_2,
+                                         this.cellY * CELL_SIZE + CELL_SIZE_2,
+                                         1.0, Array.from(enemies)[0]));
+                this.reload = 1.0;
+            } else {
+                this.reload = 0;
+            }
+        }
     }
 };
 
@@ -128,10 +145,12 @@ class Enemy {
         this.nextPathCell = 1;
         this.elapsedTime = 0;
         this.speed = speed;
+        this.alive = true;
     }
 
     movePart() {
-        if (this.nextPathCell >= PATH.length) {
+        if (!this.alive || this.nextPathCell >= PATH.length) {
+            this.alive = false;
             enemies.delete(this);
             enemies.add(new Enemy(0.1));
             return false;
@@ -163,6 +182,27 @@ class Enemy {
     }
 };
 
+class Missile {
+    constructor(x, y, speed, enemy) {
+        this.X = x;
+        this.Y = y;
+        this.enemy = enemy;
+        this.speed = speed;
+    }
+
+    move(elapsedTime) {
+        var distance = Math.sqrt((this.enemy.X - this.X) ** 2 + (this.enemy.Y - this.Y) ** 2);
+        if (distance > elapsedTime * this.speed) {
+            var speedX = (this.enemy.X - this.X) / distance * this.speed;
+            var speedY = (this.enemy.Y - this.Y) / distance * this.speed;
+            this.X += speedX * elapsedTime;
+            this.Y += speedY * elapsedTime;
+        } else {
+            missiles.delete(this);
+        }
+    }
+};
+
 
 /* Game Logic */
 
@@ -190,6 +230,14 @@ function placeTower(cellX, cellY) {
 /* Main Loop */
 
 function updateState(elapsedTime) {
+    for (let tower of towers) {
+        tower.update(elapsedTime);
+    }
+
+    for (let missile of missiles) {
+        missile.move(elapsedTime);
+    }
+
     for (let enemy of enemies) {
         enemy.move(elapsedTime);
     }
@@ -212,6 +260,12 @@ function drawScene() {
         drawElement(enemy.X, enemy.Y,
                     CELL_SIZE, CELL_SIZE,
                     "spoon2");
+    }
+
+    for (let missile of missiles) {
+        drawElement(missile.X, missile.Y,
+                    CELL_SIZE_2, CELL_SIZE_2,
+                    "spoon1");
     }
 
     if (canPlaceTower(cellX, cellY)) {
