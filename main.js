@@ -19,25 +19,25 @@ const DEFAULT_RADIUS = 1.5 * CELL_SIZE;
 
 const TOWER_SHOP = [
     {
-        "type": "lozhkin",
-        "title": "Великий кибернетик",
+        "type": "writer",
+        "title": "Великий учёный",
         "description": "Получает асимптотические оценки",
         "price": 100
     },
     {
-        "type": "lozhkin",
+        "type": "science",
         "title": "Зам. декана по науке",
         "description": "Тщательно планирует время",
         "price": 500
     },
     {
-        "type": "lozhkin",
+        "type": "finance",
         "title": "Зам. декана по финансам",
         "description": "Помогает увеличивать гранты",
         "price": 500
     },
     {
-        "type": "lozhkin",
+        "type": "svetilo",
         "title": "Светило кибернетики",
         "description": "Ярким светом вдохновляет",
         "price": 1000
@@ -343,7 +343,7 @@ function drawMenu(cellX, cellY) {
             drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
                         cellY * CELL_SIZE + CELL_SIZE_2,
                         CELL_SIZE, CELL_SIZE, 0,
-                        "lozhkin");
+                        TOWER_SHOP[toBuild].type);
         } else {
             drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
                         cellY * CELL_SIZE + CELL_SIZE_2,
@@ -417,7 +417,7 @@ function drawScene() {
         drawElement(tower.cellX * CELL_SIZE + CELL_SIZE_2,
                     tower.cellY * CELL_SIZE + CELL_SIZE_2,
                     CELL_SIZE, CELL_SIZE, tower.getRotation(),
-                    "lozhkin");
+                    tower.type);
     }
 
     for (let enemy of enemies) {
