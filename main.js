@@ -15,6 +15,34 @@ const PATH = [
     [8, 7], [9, 7], [10, 7], [11, 7],
     [12, 7]
 ];
+const DEFAULT_RADIUS = 1.5 * CELL_SIZE;
+
+const TOWER_SHOP = [
+    {
+        "type": "lozhkin",
+        "title": "Великий кибернетик",
+        "description": "Получает асимптотические оценки",
+        "price": 100
+    },
+    {
+        "type": "lozhkin",
+        "title": "Зам. декана по науке",
+        "description": "Тщательно планирует время",
+        "price": 500
+    },
+    {
+        "type": "lozhkin",
+        "title": "Зам. декана по финансам",
+        "description": "Помогает увеличивать гранты",
+        "price": 500
+    },
+    {
+        "type": "lozhkin",
+        "title": "Светило кибернетики",
+        "description": "Ярким светом вдохновляет",
+        "price": 1000
+    }
+];
 
 
 /* Globals */
@@ -24,6 +52,7 @@ var mouseX = 0;
 var mouseY = 0;
 var prevTimestamp = 0;
 
+var budget = 300;
 var towers = new Set();
 var enemies = new Set();
 var missiles = new Set();
@@ -50,6 +79,26 @@ function drawElement(x, y, width, height, rotation, type) {
         "top": globalY,
         "transform": "rotate(" + rotation + "deg)"
     });
+
+    $(game).append(element);
+}
+
+function drawText(x, y, width, height, text, color) {
+    var globalWidth = width * $(game).height();
+    var globalHeight = height * $(game).height();
+    var globalX = x / ASPECT_RATIO * $(game).width() + $(game).offset().left - globalWidth / 2;
+    var globalY = y * $(game).height() + $(game).offset().top - globalHeight / 2;
+
+    var element = $("<div/>", {
+        "class": "gameElement textElement"
+    }).css({
+        "width": globalWidth,
+        "height": globalHeight,
+        "left": globalX,
+        "top": globalY,
+        "font-size": globalHeight,
+        "color": color
+    }).text(text);
 
     $(game).append(element);
 }
@@ -121,18 +170,24 @@ class Tower {
         this.cellY = cellY;
         this.reload = 1.0;
         this.reloadSpeed = 1.0;
+        this.radius = DEFAULT_RADIUS;
     }
 
     update(elapsedTime) {
         this.reload -= elapsedTime * this.reloadSpeed;
         if (this.reload <= 0) {
-            if (enemies.size > 0) {
-                missiles.add(new Missile(this.cellX * CELL_SIZE + CELL_SIZE_2,
-                                         this.cellY * CELL_SIZE + CELL_SIZE_2,
-                                         1.0, Array.from(enemies)[0]));
+            this.reload = 0;
+            var towerX = this.cellX * CELL_SIZE + CELL_SIZE_2;
+            var towerY = this.cellY * CELL_SIZE + CELL_SIZE_2;
+            for (let enemy of enemies) {
+                var dist = Math.sqrt((enemy.X - towerX) ** 2 + (enemy.Y - towerY) ** 2);
+console.log(dist);
+                if (dist > this.radius) {
+                    continue;
+                }
+                missiles.add(new Missile(towerX, towerY, 1.0, enemy));
                 this.reload = 1.0;
-            } else {
-                this.reload = 0;
+                break;
             }
         }
     }
@@ -219,6 +274,9 @@ class Missile {
 /* Game Logic */
 
 function canPlaceTower(cellX, cellY) {
+    if (cellX < 0 || cellX > 11 || cellY < 0 || cellY > 8) {
+        return false;
+    }
     for (let coord of PATH) {
         if (coord[0] == cellX && coord[1] == cellY) {
             return false;
@@ -255,6 +313,39 @@ function updateState(elapsedTime) {
     }
 }
 
+function drawMenu() {
+    drawText(13 * CELL_SIZE, CELL_SIZE_2 - 0.15 * CELL_SIZE,
+             2 * CELL_SIZE, 0.3 * CELL_SIZE,
+             "Бюджет", "white");
+    drawText(13 * CELL_SIZE, CELL_SIZE_2 + 0.15 * CELL_SIZE,
+             2 * CELL_SIZE, 0.2 * CELL_SIZE,
+             "Это то, что тратить", "white");
+     drawText(15 * CELL_SIZE, CELL_SIZE_2,
+              2 * CELL_SIZE, 0.3 * CELL_SIZE,
+              budget + " ₽", "white");
+
+    for (var i = 0; i < TOWER_SHOP.length; ++i) {
+        var item = TOWER_SHOP[i];
+        var color = item.price > budget ? "red" : "white";
+        drawElement(12 * CELL_SIZE + CELL_SIZE_2,
+                    (1 + i) * CELL_SIZE + CELL_SIZE_2,
+                    CELL_SIZE, CELL_SIZE, 0,
+                    item.type);
+        drawText(14 * CELL_SIZE + CELL_SIZE_2,
+                 (1 + i) * CELL_SIZE + CELL_SIZE_2 - 0.3 * CELL_SIZE,
+                 3 * CELL_SIZE, 0.25 * CELL_SIZE,
+                 item.title, color);
+        drawText(14 * CELL_SIZE + CELL_SIZE_2,
+                 (1 + i) * CELL_SIZE + CELL_SIZE_2,
+                 3 * CELL_SIZE, 0.2 * CELL_SIZE,
+                 item.description, color);
+        drawText(14 * CELL_SIZE + CELL_SIZE_2,
+                 (1 + i) * CELL_SIZE + CELL_SIZE_2 + 0.3 * CELL_SIZE,
+                 3 * CELL_SIZE, 0.2 * CELL_SIZE,
+                 "Цена: " + item.price + " ₽", color);
+    }
+}
+
 function drawScene() {
     $(game).empty();
 
@@ -283,14 +374,20 @@ function drawScene() {
     if (canPlaceTower(cellX, cellY)) {
         drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
                     cellY * CELL_SIZE + CELL_SIZE_2,
+                    2 * DEFAULT_RADIUS, 2 * DEFAULT_RADIUS, 0,
+                    "circle");
+        drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
+                    cellY * CELL_SIZE + CELL_SIZE_2,
                     CELL_SIZE, CELL_SIZE, 0,
                     "lozhkin");
-    } else {
+    } else if (cellX < 12) {
         drawElement(cellX * CELL_SIZE + CELL_SIZE_2,
                     cellY * CELL_SIZE + CELL_SIZE_2,
                     CELL_SIZE, CELL_SIZE, 0,
                     "red_cross");
     }
+
+    drawMenu();
 }
 
 function mainLoop(timestamp) {
