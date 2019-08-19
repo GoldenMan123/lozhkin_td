@@ -15,7 +15,7 @@ const PATH = [
     [8, 7], [9, 7], [10, 7], [11, 7],
     [12, 7]
 ];
-const DEFAULT_RADIUS = 1.5 * CELL_SIZE;
+const DEFAULT_RADIUS = 1.85 * CELL_SIZE;
 
 const ENEMY_TYPES = [
     "enemy1",
@@ -31,7 +31,7 @@ const TOWER_SHOP = [
         "type": "writer",
         "title": "Великий учёный",
         "description": "Получает асимптотические оценки",
-        "price": 100
+        "price": 250
     },
     {
         "type": "science",
@@ -81,7 +81,7 @@ var mouseY = 0;
 var prevTimestamp = 0;
 var gameOver = false;
 
-var budget = 300;
+var budget = 500;
 var toBuild = null;
 var towers = new Set();
 var enemies = new Set();
@@ -366,7 +366,20 @@ class Enemy {
             return;
         }
 
-        this.health -= strength / this.shield;
+        var shield = this.shield;
+        for (let tower of towers) {
+            if (tower.type != "science") {
+                continue;
+            }
+            var towerX = tower.cellX * CELL_SIZE + CELL_SIZE_2;
+            var towerY = tower.cellY * CELL_SIZE + CELL_SIZE_2;
+            var distance = Math.sqrt((towerX - this.X) ** 2 + (towerY - this.Y) ** 2);
+            if (distance < tower.radius) {
+                shield = Math.min(shield, this.shield / tower.strength);
+            }
+        }
+
+        this.health -= strength / shield;
         if (this.health < 1e-6) {
             this.health = 0;
             this.alive = false;
@@ -480,7 +493,10 @@ function updateWave(elapsedTime) {
     if (waveSpawnTimeout < 0) {
         waveSpawnTimeout = 0;
         if (waveSpawned < 9 + wave) {
-            enemies.add(new Enemy(wave, 1.5 + (wave - 1) / 100, 9 + wave));
+            var speed = 1.5 + (wave < 10 ? (wave - 1) / 10 : 1) * Math.random();
+            var reward = Math.max(0, 30 - (wave - 1));
+            var shield = Math.floor(wave * 1.1 ** Math.floor(wave / 5));
+            enemies.add(new Enemy(shield, speed, reward));
             waveSpawned += 1;
             waveSpawnTimeout = 1.0;
         } else if (enemies.size == 0) {
