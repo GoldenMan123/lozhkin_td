@@ -80,6 +80,8 @@ var mouseX = 0;
 var mouseY = 0;
 var prevTimestamp = 0;
 var gameOver = false;
+var prevTouchCellX = null;
+var prevTouchCellY = null;
 
 var budget = 500;
 var toBuild = null;
@@ -157,6 +159,17 @@ window.mobilecheck = function() {
   return check;
 };
 
+function checkWindow() {
+    if (!window.mobilecheck() || document.documentElement.requestFullscreen == null) {
+        return;
+    }
+    if (window.orientation != 90 && window.orientation != -90 || document.fullscreenElement == null) {
+        document.documentElement.requestFullscreen().then(function() {
+            screen.orientation.lock("landscape");
+        })
+    }
+}
+
 function resizeWindow() {
     var newWidth = window.innerWidth;
     var newHeight = window.innerHeight;
@@ -180,6 +193,16 @@ function mousedown(evt) {
     var cellX = coordToCell(mouseX);
     var cellY = coordToCell(mouseY);
 
+    var isMobile = window.mobilecheck();
+    var doubleClick = false;
+    if (isMobile) {
+        if (cellX == prevTouchCellX && cellY == prevTouchCellY) {
+            doubleClick = true;
+        }
+        prevTouchCellX = cellX;
+        prevTouchCellY = cellY;
+    }
+
     if (gameOver) {
         return;
     }
@@ -193,6 +216,9 @@ function mousedown(evt) {
     }
 
     if (toBuild != null && cellX < 12) {
+        if (isMobile && !doubleClick) {
+            return;
+        }
         placeTower(cellX, cellY);
         return;
     }
@@ -215,16 +241,32 @@ function mousemove(evt) {
     mouseY = clamp((evt.pageY - $(game).offset().top) / $(game).height(), 0, 1);
 }
 
+function getTouchPos(evt) {
+    var touch = evt.touches[0] || evt.changedTouches[0];
+    return {
+        "pageX": touch.clientX,
+        "pageY": touch.clientY
+    };
+}
+
 function touchstart(evt) {
     evt.preventDefault();
+    evt = getTouchPos(evt);
+    mousemove(evt);
+    mousedown(evt);
 }
 
 function touchend(evt) {
     evt.preventDefault();
+    evt = getTouchPos(evt);
+    mousemove(evt);
+    checkWindow();
 }
 
 function touchmove(evt) {
     evt.preventDefault();
+    evt = getTouchPos(evt);
+    mousemove(evt);
 }
 
 
@@ -596,7 +638,7 @@ function drawMenu(cellX, cellY) {
                  item.title, color, 1.0);
         drawText(14 * CELL_SIZE + CELL_SIZE_2,
                  (1 + i) * CELL_SIZE + CELL_SIZE_2,
-                 3 * CELL_SIZE, 0.2 * CELL_SIZE,
+                 3 * CELL_SIZE, 0.19 * CELL_SIZE,
                  item.description, color, 1.0);
         drawText(14 * CELL_SIZE + CELL_SIZE_2,
                  (1 + i) * CELL_SIZE + CELL_SIZE_2 + 0.3 * CELL_SIZE,
